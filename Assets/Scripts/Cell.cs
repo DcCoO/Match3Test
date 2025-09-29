@@ -1,21 +1,28 @@
+using System;
 using UnityEngine;
 
 public class Cell : MonoBehaviour
 {
-    [SerializeField] private SpriteRenderer _spriteRenderer;
-
-    private ColorDefinition _colorDefinition;
+    public static event Action<Cell> OnCellClicked;
     
+    [SerializeField] private SpriteRenderer _spriteRenderer;
     [field: SerializeField] public Vector2 Size { get; private set; }
 
-    public void InitializeData(ColorDefinition colorDefinition, int sortingOrder)
-    {
+    public ColorDefinition ColorDefinition { get; private set; }
+    public Vector2Int Index { get; private set; }
+    public int Id => ColorDefinition.Id;
+    
+    public void InitializeData(ColorDefinition colorDefinition, Vector2Int index, int sortingOrder = 0)
+    { 
+        ColorDefinition = colorDefinition;
         _spriteRenderer.sprite = colorDefinition.Sprite;
-        _spriteRenderer.sortingOrder = sortingOrder;
+        if (sortingOrder is not 0) _spriteRenderer.sortingOrder = sortingOrder;
+        Index = index;
+        gameObject.SetActive(true);
     }
 
     private void OnMouseDown()
     {
-        print("Cell clicked!");
+        OnCellClicked?.Invoke(this);
     }
 }

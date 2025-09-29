@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class GameManager : MonoBehaviour
@@ -19,6 +21,19 @@ public class GameManager : MonoBehaviour
     private Factory<Cell> _factory;
     private int _score;
     private int _moves;
+    private bool _canPlay;
+    
+    private void OnEnable()
+    {
+        Cell.OnCellClicked += HandleCellClicked;
+        GameOver.OnRestart += Restart;
+    }
+
+    private void OnDisable()
+    {
+        Cell.OnCellClicked -= HandleCellClicked;
+        GameOver.OnRestart -= Restart;
+    }
     
     private void Start()
     {
@@ -29,6 +44,7 @@ public class GameManager : MonoBehaviour
     private void StartGame()
     {
         _score = 0;
+        _canPlay = true;
         _moves = _settings.InitialMoves;
         _grid = new Cell[_settings.GridSize.y, _settings.GridSize.x];
 
@@ -42,7 +58,7 @@ public class GameManager : MonoBehaviour
                 var cell = _factory.Get();
                 cell.transform.SetParent(_cellParent);
                 cell.transform.position = originPosition + new Vector2(j * cellSize.x, i * cellSize.y);
-                cell.InitializeData(_colors.GetRandomColor(), 1 + i);
+                cell.InitializeData(_colors.GetRandomColor(), new Vector2Int(i, j), 1 + i);
                 _grid[i, j] = cell;
             }
         }
@@ -50,19 +66,102 @@ public class GameManager : MonoBehaviour
         OnGameStart?.Invoke();
     }
 
-    public void OnClick_MakeMove()
+    private bool IsInsideGrid(Vector2Int index)
     {
-        _score += 10;
+        if (index.x < 0) return false;
+        if (index.y < 0) return false;
+        if (index.x >= _settings.GridSize.y) return false;
+        if (index.y >= _settings.GridSize.x) return false;
+        return true;
+    }
+
+    private void HandleCellClicked(Cell cell)
+    {
+        if (!_canPlay) return;
+
+        StartCoroutine(PlayRoutine(cell));
+    }
+
+    private IEnumerator PlayRoutine(Cell cell)
+    {
+        _canPlay = false;
+        DisableMatchingCells(cell, out var score);
+        yield return new WaitForSeconds(1f);
+        FillGrid();
+        
+        _score += score;
         _moves -= 1;
         OnMoveMade?.Invoke(_score, _moves);
 
         if (_moves is 0)
         {
+            yield return new WaitForSeconds(1f);
             OnGameOver?.Invoke();
+        }
+        else _canPlay = true;
+    }
+
+    private void DisableMatchingCells(Cell initialCell, out int score)
+    {
+        score = 0;
+        var id = initialCell.Id;
+        var visited = new HashSet<(int, int)>();
+        var toVisit = new Queue<Cell>();
+        toVisit.Enqueue(initialCell);
+        var directions = new List<Vector2Int> { Vector2Int.left, Vector2Int.right, Vector2Int.up, Vector2Int.down };
+
+        while (toVisit.Count is not 0)
+        {
+            var cell = toVisit.Dequeue();
+            if (!visited.Add((cell.Index.x, cell.Index.y))) continue;
+            cell.gameObject.SetActive(false);
+            ++score;
+
+            foreach (var direction in directions)
+            {
+                var neighborIndex = cell.Index + direction;
+                if (!IsInsideGrid(neighborIndex) || visited.Contains((neighborIndex.x, neighborIndex.y))) continue;
+                
+                var neighbor = _grid[neighborIndex.x, neighborIndex.y];
+                if (neighbor.Id == id)
+                {
+                    toVisit.Enqueue(neighbor);
+                }
+            }
+        }
+    }
+
+    private ColorDefinition GetFallingCell(Vector2Int index)
+    {
+        for (var i = index.x + 1; i < _settings.GridSize.y; ++i)
+        {
+            var cell = _grid[i, index.y];
+            if (!cell.gameObject.activeSelf) continue;
+            
+            var colorDefinition = cell.ColorDefinition;
+            cell.gameObject.SetActive(false);
+            return colorDefinition;
+        }
+
+        return _colors.GetRandomColor();
+    }
+
+    private void FillGrid()
+    {
+        for (var i = 0; i < _settings.GridSize.y; ++i)
+        {
+            for (var j = 0; j < _settings.GridSize.x; ++j)
+            {
+                var cell = _grid[i, j];
+                if (!cell.gameObject.activeSelf)
+                {
+                    cell.InitializeData(GetFallingCell(cell.Index), cell.Index);
+                }
+            }
         }
     }
     
-    public void OnClick_Restart()
+    private void Restart()
     {
         for (var i = 0; i < _settings.GridSize.y; ++i)
         {

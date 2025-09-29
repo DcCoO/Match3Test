@@ -1,7 +1,10 @@
+using System;
 using UnityEngine;
 
 public class GameOver : MonoBehaviour
 {
+    public static event Action OnRestart;
+    
     [SerializeField] private CanvasGroup _canvasGroup;
     
     private void OnEnable()
@@ -28,5 +31,10 @@ public class GameOver : MonoBehaviour
         _canvasGroup.alpha = 1;
         _canvasGroup.interactable = true;
         _canvasGroup.blocksRaycasts = true;
+    }
+
+    public void OnClick_Restart()
+    {
+        OnRestart?.Invoke();
     }
 }
