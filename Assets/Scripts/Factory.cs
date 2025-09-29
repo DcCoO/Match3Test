@@ -1,6 +1,10 @@
 using UnityEngine;
 using UnityEngine.Pool;
 
+/// <summary>
+/// This class is a generic factory of MonoBehaviours that includes the usage of a pool.
+/// </summary>
+/// <typeparam name="T">Type used by the factory, derived from a MonoBehaviour.</typeparam>
 public class Factory<T> where T : MonoBehaviour
 {
     private readonly T _prefab;

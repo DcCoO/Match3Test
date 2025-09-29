@@ -51,6 +51,8 @@ public class GameManager : MonoBehaviour
         var originPosition = (Vector2)_gridOrigin.position;
         var cellSize = _cellPrefab.Size;
         
+        // Instantiate all cells, increasing their sorting order based on row, so the top ones appear in front of the bottom ones.
+        // The world position of each cell is set based on the origin, considering the grid index of the cell multiplied by its size.
         for (var i = 0; i < _settings.GridSize.y; ++i)
         {
             for (var j = 0; j < _settings.GridSize.x; ++j)
@@ -101,6 +103,12 @@ public class GameManager : MonoBehaviour
         else _canPlay = true;
     }
 
+    /// <summary>
+    /// This method simply disables all connected cells of the same Id, storing this quantity in <paramref name="score"/>.
+    /// It uses the Breadth-First Search algorithm to find connected cells.
+    /// </summary>
+    /// <param name="initialCell">Clicked cell.</param>
+    /// <param name="score">Number of connected cells of the same color as <paramref name="initialCell"/>, including <paramref name="initialCell"/>.</param>
     private void DisableMatchingCells(Cell initialCell, out int score)
     {
         score = 0;
@@ -131,6 +139,12 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// This method returns the ColorDefinition of the first valid cell above the cell at index <paramref name="index"/>.
+    /// If there is no such cell, return a random ColorDefinition.
+    /// </summary>
+    /// <param name="index">Index of a cell in grid.</param>
+    /// <returns>The ColorDefinition of the first valid cell above the given index or a random one if there isn't a valid cell.</returns>
     private ColorDefinition GetFallingCell(Vector2Int index)
     {
         for (var i = index.x + 1; i < _settings.GridSize.y; ++i)
@@ -146,6 +160,10 @@ public class GameManager : MonoBehaviour
         return _colors.GetRandomColor();
     }
 
+    /// <summary>
+    /// This method will fill the grid gaps after the move was made.
+    /// It will make some cells "fall" and spawn new cells to fill the remaining gaps.
+    /// </summary>
     private void FillGrid()
     {
         for (var i = 0; i < _settings.GridSize.y; ++i)
